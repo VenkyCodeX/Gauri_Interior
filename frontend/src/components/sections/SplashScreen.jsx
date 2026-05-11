@@ -1,17 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const letters = 'GAURI INTERIORS'.split('')
 
 export default function SplashScreen({ onComplete }) {
   const [phase, setPhase] = useState(0)
+  const called = useRef(false)
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(1), 1000)
     const t2 = setTimeout(() => setPhase(2), 2800)
-    const t3 = setTimeout(() => onComplete(), 3500)
+    const t3 = setTimeout(() => {
+      if (!called.current) { called.current = true; onComplete() }
+    }, 3500)
     return () => [t1, t2, t3].forEach(clearTimeout)
-  }, [onComplete])
+  }, [])
 
   return (
     <AnimatePresence>
