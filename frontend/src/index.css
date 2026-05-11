@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  --animate-shimmer: shimmer 1.5s infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-gradient: gradient-shift 6s ease infinite;
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-16px); }
+  }
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+}
+
+@layer base {
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8C97A;
+    --gold-dark: #A07830;
+    --dark: #0A0A0A;
+    --dark-2: #111111;
+    --dark-3: #1A1A1A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: #0A0A0A;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: #C9A84C33; color: #C9A84C; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #0A0A0A; }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #C9A84C, #E8C97A);
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  /* Gold */
+  .gold-gradient { background: linear-gradient(135deg, #C9A84C, #E8C97A, #A07830); }
+  .gold-text {
+    background: linear-gradient(135deg, #C9A84C, #E8C97A, #C9A84C);
+    background-size: 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 4s ease infinite;
+  }
+
+  /* Glass */
+  .glass {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(201,168,76,0.15);
+  }
+  .glass-dark {
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(201,168,76,0.1);
+  }
+
+  /* Glow */
+  .glow-gold { box-shadow: 0 0 40px rgba(201,168,76,0.3); }
+
+  /* Section backgrounds */
+  .bg-section-alt {
+    background: radial-gradient(ellipse at 0% 100%, rgba(201,168,76,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 100% 0%, rgba(201,168,76,0.03) 0%, transparent 60%),
+                #0D0D0D;
+  }
+
+  /* Float animation */
+  .float { animation: float 6s ease-in-out infinite; }
+
+  /* Utilities */
+  .text-gold { color: #C9A84C; }
+  .border-gold { border-color: #C9A84C; }
+  .bg-gold { background-color: #C9A84C; }
+  .section-padding { padding: 6rem 1.5rem; }
+  .container-custom { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
+}
