@@ -1,9 +1,8 @@
 const router = require('express').Router()
 const Gallery = require('../models/Gallery')
 const { protect } = require('../middleware/auth')
-const { uploadImage, cloudinary } = require('../config/cloudinary')
+const { cloudinary, imageUpload, uploadToCloudinary } = require('../config/cloudinary')
 
-// GET /api/gallery
 router.get('/', async (req, res) => {
   try {
     const { category, limit = 20, page = 1 } = req.query
@@ -14,13 +13,17 @@ router.get('/', async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 })
 
-// POST /api/gallery (admin)
-router.post('/', protect, uploadImage.single('image'), async (req, res) => {
+router.post('/', protect, imageUpload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'Image required' })
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: 'gauri-interiors/gallery',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      transformation: [{ quality: 'auto:good', fetch_format: 'auto', width: 1920, crop: 'limit' }],
+    })
     const item = await Gallery.create({
-      imageUrl: req.file.path,
-      publicId: req.file.filename,
+      imageUrl: result.secure_url,
+      publicId: result.public_id,
       caption: req.body.caption || '',
       category: req.body.category || 'General',
     })
@@ -28,7 +31,6 @@ router.post('/', protect, uploadImage.single('image'), async (req, res) => {
   } catch { res.status(500).json({ message: 'Upload failed' }) }
 })
 
-// PUT /api/gallery/:id (admin)
 router.put('/:id', protect, async (req, res) => {
   try {
     const item = await Gallery.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -37,7 +39,6 @@ router.put('/:id', protect, async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 })
 
-// DELETE /api/gallery/:id (admin)
 router.delete('/:id', protect, async (req, res) => {
   try {
     const item = await Gallery.findById(req.params.id)

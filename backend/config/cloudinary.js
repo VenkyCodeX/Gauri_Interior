@@ -1,6 +1,6 @@
 const cloudinary = require('cloudinary').v2
-const { CloudinaryStorage } = require('multer-storage-cloudinary')
 const multer = require('multer')
+const { Readable } = require('stream')
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -11,44 +11,32 @@ cloudinary.config({
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 
-const imageStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'gauri-interiors/gallery',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ quality: 'auto:good', fetch_format: 'auto', width: 1920, crop: 'limit' }],
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) return cb(null, true)
+    cb(new Error('Invalid file type. Only JPG, PNG, WebP allowed.'), false)
   },
+  limits: { fileSize: 10 * 1024 * 1024 },
 })
 
-const videoStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'gauri-interiors/videos',
-    resource_type: 'video',
-    allowed_formats: ['mp4', 'mov', 'webm'],
+const videoUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_VIDEO_TYPES.includes(file.mimetype)) return cb(null, true)
+    cb(new Error('Invalid file type. Only MP4, MOV, WebM allowed.'), false)
   },
+  limits: { fileSize: 200 * 1024 * 1024 },
 })
 
-const imageFileFilter = (req, file, cb) => {
-  if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) return cb(null, true)
-  cb(new Error('Invalid file type. Only JPG, PNG, WebP allowed.'), false)
+const uploadToCloudinary = (buffer, options) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (error) return reject(error)
+      resolve(result)
+    })
+    Readable.from(buffer).pipe(stream)
+  })
 }
 
-const videoFileFilter = (req, file, cb) => {
-  if (ALLOWED_VIDEO_TYPES.includes(file.mimetype)) return cb(null, true)
-  cb(new Error('Invalid file type. Only MP4, MOV, WebM allowed.'), false)
-}
-
-const uploadImage = multer({
-  storage: imageStorage,
-  fileFilter: imageFileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-})
-
-const uploadVideo = multer({
-  storage: videoStorage,
-  fileFilter: videoFileFilter,
-  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
-})
-
-module.exports = { cloudinary, uploadImage, uploadVideo }
+module.exports = { cloudinary, imageUpload, videoUpload, uploadToCloudinary }

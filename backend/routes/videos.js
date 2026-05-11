@@ -1,7 +1,7 @@
 const router = require('express').Router()
 const Video = require('../models/Video')
 const { protect } = require('../middleware/auth')
-const { uploadVideo, cloudinary } = require('../config/cloudinary')
+const { cloudinary, videoUpload, uploadToCloudinary } = require('../config/cloudinary')
 
 router.get('/', async (req, res) => {
   try {
@@ -12,15 +12,21 @@ router.get('/', async (req, res) => {
   } catch { res.status(500).json({ message: 'Server error' }) }
 })
 
-router.post('/', protect, uploadVideo.single('video'), async (req, res) => {
+router.post('/', protect, videoUpload.single('video'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'Video required' })
-    const thumbnailUrl = req.file.path.replace('/upload/', '/upload/so_0,w_600,h_400,c_fill/').replace(/\.[^/.]+$/, '.jpg')
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: 'gauri-interiors/videos',
+      resource_type: 'video',
+      allowed_formats: ['mp4', 'mov', 'webm'],
+    })
+    const thumbnailUrl = result.secure_url.replace('/upload/', '/upload/so_0,w_600,h_400,c_fill/').replace(/\.[^/.]+$/, '.jpg')
     const item = await Video.create({
-      videoUrl: req.file.path,
+      videoUrl: result.secure_url,
       thumbnailUrl,
-      publicId: req.file.filename,
+      publicId: result.public_id,
       title: req.body.title || '',
+      category: req.body.category || '',
     })
     res.status(201).json({ data: item })
   } catch { res.status(500).json({ message: 'Upload failed' }) }
