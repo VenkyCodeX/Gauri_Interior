@@ -148,8 +148,9 @@ export default function SplashScreen({ onComplete }) {
                       width: 110, height: 110,
                       borderRadius: '50%',
                       border: '1px solid rgba(201,168,76,0.2)',
-                      top: '50%', left: '50%',
-                      transform: 'translate(-50%, -68%)',
+                      top: -19,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
                       pointerEvents: 'none',
                     }}
                   />
