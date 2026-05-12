@@ -1,31 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sofa, Bed, Bath, Leaf, Blinds, Home } from 'lucide-react'
 
-// ── Timing constants (ms) ──────────────────────────────────────────────────
-const SCENE_DUR  = 580   // fly-in duration
-const HOLD_DUR   = 260   // hold at center
-const FLY_OUT    = 580   // fly-out duration
-const GAP        = 80    // gap between icons
-
-// Each icon occupies: SCENE_DUR + HOLD_DUR + FLY_OUT = 1020ms
-// Next icon starts after: SCENE_DUR + HOLD_DUR + GAP = 660ms (overlaps fly-out)
-const ICON_CYCLE = SCENE_DUR + HOLD_DUR + GAP   // 660ms stagger
-
 const ICONS = [
-  { Icon: Sofa,   label: 'Living Room', from: { x: -320, y: 0 },    to: { x: 320, y: 0 } },
-  { Icon: Bed,    label: 'Bedroom',     from: { x: 0, y: -320 },    to: { x: 0, y: 320 } },
-  { Icon: Bath,   label: 'Bathroom',    from: { x: 320, y: 0 },     to: { x: -320, y: 0 } },
-  { Icon: Leaf,   label: 'Decor',       from: { x: 0, y: 320 },     to: { x: 0, y: -320 } },
-  { Icon: Blinds, label: 'Blinds',      from: { x: -260, y: -260 }, to: { x: 260, y: 260 } },
+  { Icon: Sofa,   label: 'Living Room' },
+  { Icon: Bed,    label: 'Bedroom'     },
+  { Icon: Bath,   label: 'Bathroom'    },
+  { Icon: Leaf,   label: 'Decor'       },
+  { Icon: Blinds, label: 'Blinds'      },
 ]
 
-// Last icon starts at: 4 * 660 = 2640ms, exits at: 2640 + 1020 = 3660ms
-// Brand reveal starts right after last icon exits
-const BRAND_START_MS = ICON_CYCLE * (ICONS.length - 1) + SCENE_DUR + HOLD_DUR + FLY_OUT  // 3660ms
-const BRAND_DUR_MS   = 800
-const TOTAL_MS       = 5000   // hard cap — onComplete fires here
-const SAFETY_MS      = 5500   // fallback
+// How long each icon stays centered before sliding left
+const HOLD_MS    = 900
+// Slide transition duration
+const SLIDE_MS   = 600
+// Total per icon cycle
+const CYCLE_MS   = HOLD_MS + SLIDE_MS   // 1500ms
+// All icons done at: 5 * 1500 = 7500ms — too long, cap at 5500
+const TOTAL_MS   = 5500
+const SAFETY_MS  = 6200
+const BRAND_START_MS = CYCLE_MS * ICONS.length  // show brand after last icon
 
 const GOLD = '#C9A84C'
 
@@ -36,46 +30,52 @@ const CORNERS = [
   { bottom: 16, right: 16, borderBottom: true, borderRight: true  },
 ]
 
+// Position slots relative to center:
+// slot -2: far left (hidden/tiny)
+// slot -1: left (small)
+// slot  0: center (big)
+// slot +1: right (small)
+// slot +2: far right (hidden/tiny)
+
+function getSlotStyle(slot) {
+  switch (slot) {
+    case 0:  return { x: 0,    scale: 1,    opacity: 1,   zIndex: 10 }
+    case -1: return { x: -180, scale: 0.55, opacity: 0.4, zIndex: 5  }
+    case 1:  return { x: 180,  scale: 0.55, opacity: 0.4, zIndex: 5  }
+    case -2: return { x: -320, scale: 0.3,  opacity: 0,   zIndex: 1  }
+    case 2:  return { x: 320,  scale: 0.3,  opacity: 0,   zIndex: 1  }
+    default: return { x: slot < 0 ? -400 : 400, scale: 0.2, opacity: 0, zIndex: 0 }
+  }
+}
+
 export default function SplashScreen({ onComplete }) {
-  const [activeIcon, setActiveIcon] = useState(0)
-  const [iconVisible, setIconVisible] = useState(true)
+  // activeIndex = which icon is currently centered
+  const [activeIndex, setActiveIndex] = useState(0)
   const [showBrand, setShowBrand] = useState(false)
 
-  // Safety fallback — always fires onComplete even if animations fail
+  // Safety fallback
   useEffect(() => {
     const safety = setTimeout(() => onComplete?.(), SAFETY_MS)
     return () => clearTimeout(safety)
-  }, [])  // eslint-disable-line
+  }, []) // eslint-disable-line
 
-  // Main sequence
+  // Advance carousel every CYCLE_MS
   useEffect(() => {
     const timers = []
 
     ICONS.forEach((_, i) => {
-      const startAt = i * ICON_CYCLE
-
-      // Show icon i
-      timers.push(setTimeout(() => {
-        setActiveIcon(i)
-        setIconVisible(true)
-      }, startAt))
-
-      // Hide icon i (start fly-out)
-      timers.push(setTimeout(() => {
-        setIconVisible(false)
-      }, startAt + SCENE_DUR + HOLD_DUR))
+      if (i === 0) return // starts at 0
+      timers.push(setTimeout(() => setActiveIndex(i), i * CYCLE_MS))
     })
 
-    // Show brand after last icon exits
+    // Show brand after all icons
     timers.push(setTimeout(() => setShowBrand(true), BRAND_START_MS))
 
-    // Call onComplete at hard cap
+    // onComplete
     timers.push(setTimeout(() => onComplete?.(), TOTAL_MS))
 
     return () => timers.forEach(clearTimeout)
   }, [onComplete])
-
-  const { Icon, label, from, to } = ICONS[activeIcon] || ICONS[0]
 
   return (
     <motion.div
@@ -100,37 +100,84 @@ export default function SplashScreen({ onComplete }) {
         }} />
       ))}
 
-      {/* Icon stage */}
-      <AnimatePresence mode="wait">
-        {iconVisible && !showBrand && (
-          <motion.div
-            key={activeIcon}
-            initial={{ x: from.x, y: from.y, scale: 0.6, opacity: 0 }}
-            animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-            exit={{ x: to.x, y: to.y, scale: 0.65, opacity: 0 }}
-            transition={{
-              default: { duration: SCENE_DUR / 1000, ease: [0.22, 1, 0.36, 1] },
-              exit:    { duration: FLY_OUT / 1000,   ease: [0.55, 0, 1, 0.45] },
-            }}
-            style={{
-              position: 'absolute',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: 14,
-            }}
-          >
-            <Icon size={72} color={GOLD} strokeWidth={1.2} />
-            <span style={{
-              fontFamily: 'Georgia, serif',
-              fontSize: 12,
-              letterSpacing: '5px',
-              textTransform: 'uppercase',
-              color: 'rgba(201,168,76,0.65)',
-            }}>
-              {label}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Carousel stage */}
+      {!showBrand && (
+        <div style={{ position: 'relative', width: '100%', height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {ICONS.map(({ Icon, label }, i) => {
+            const slot = i - activeIndex  // relative position to center
+            const { x, scale, opacity, zIndex } = getSlotStyle(slot)
+
+            return (
+              <motion.div
+                key={i}
+                animate={{ x, scale, opacity }}
+                transition={{ duration: SLIDE_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
+                style={{
+                  position: 'absolute',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 12,
+                  zIndex,
+                  pointerEvents: 'none',
+                }}
+              >
+                <Icon
+                  size={slot === 0 ? 72 : 44}
+                  color={slot === 0 ? GOLD : 'rgba(201,168,76,0.4)'}
+                  strokeWidth={1.2}
+                />
+                <span style={{
+                  fontFamily: 'Georgia, serif',
+                  fontSize: slot === 0 ? 12 : 10,
+                  letterSpacing: '5px',
+                  textTransform: 'uppercase',
+                  color: slot === 0 ? 'rgba(201,168,76,0.75)' : 'rgba(201,168,76,0.25)',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {label}
+                </span>
+
+                {/* Center glow ring */}
+                {slot === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={{
+                      position: 'absolute',
+                      width: 110, height: 110,
+                      borderRadius: '50%',
+                      border: '1px solid rgba(201,168,76,0.2)',
+                      top: '50%', left: '50%',
+                      transform: 'translate(-50%, -68%)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )}
+              </motion.div>
+            )
+          })}
+
+          {/* Center indicator line */}
+          <div style={{
+            position: 'absolute',
+            bottom: -20,
+            display: 'flex', gap: 6,
+          }}>
+            {ICONS.map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{
+                  width: i === activeIndex ? 24 : 6,
+                  background: i === activeIndex ? GOLD : 'rgba(201,168,76,0.2)',
+                }}
+                transition={{ duration: 0.3 }}
+                style={{ height: 2, borderRadius: 2 }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Brand reveal */}
       <AnimatePresence>
@@ -146,7 +193,6 @@ export default function SplashScreen({ onComplete }) {
               alignItems: 'center', gap: 16,
             }}
           >
-            {/* Rings + icon */}
             <motion.div
               initial={{ scale: 0.75, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -166,7 +212,6 @@ export default function SplashScreen({ onComplete }) {
               </div>
             </motion.div>
 
-            {/* Brand name */}
             <motion.p
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
@@ -180,7 +225,6 @@ export default function SplashScreen({ onComplete }) {
               Gauri Interiors
             </motion.p>
 
-            {/* Divider */}
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: 60 }}
@@ -188,7 +232,6 @@ export default function SplashScreen({ onComplete }) {
               style={{ height: 1, background: 'rgba(201,168,76,0.5)' }}
             />
 
-            {/* Tagline */}
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
