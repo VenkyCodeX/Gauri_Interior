@@ -120,11 +120,20 @@ export default function SplashScreen({ onComplete }) {
                   pointerEvents: 'none',
                 }}
               >
-                <Icon
-                  size={slot === 0 ? 72 : 44}
-                  color={slot === 0 ? GOLD : 'rgba(201,168,76,0.4)'}
-                  strokeWidth={1.2}
-                />
+              <div style={{
+                  width: slot === 0 ? 110 : 70,
+                  height: slot === 0 ? 110 : 70,
+                  borderRadius: '50%',
+                  border: slot === 0 ? '1px solid rgba(201,168,76,0.25)' : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Icon
+                    size={slot === 0 ? 52 : 32}
+                    color={slot === 0 ? GOLD : 'rgba(201,168,76,0.4)'}
+                    strokeWidth={1.2}
+                  />
+                </div>
                 <span style={{
                   fontFamily: 'Georgia, serif',
                   fontSize: slot === 0 ? 12 : 10,
@@ -136,25 +145,6 @@ export default function SplashScreen({ onComplete }) {
                   {label}
                 </span>
 
-                {/* Center glow ring */}
-                {slot === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    style={{
-                      position: 'absolute',
-                      width: 110, height: 110,
-                      borderRadius: '50%',
-                      border: '1px solid rgba(201,168,76,0.2)',
-                      top: -19,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                )}
               </motion.div>
             )
           })}
