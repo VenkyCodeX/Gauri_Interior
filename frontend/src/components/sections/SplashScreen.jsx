@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sofa, Bed, Bath, Leaf, Blinds, Home } from 'lucide-react'
 
 // ── Timing constants (ms) ──────────────────────────────────────────────────
-const SCENE_DUR  = 420   // fly-in duration
-const HOLD_DUR   = 180   // hold at center
-const FLY_OUT    = 420   // fly-out duration
-const GAP        = 60    // gap between icons
+const SCENE_DUR  = 580   // fly-in duration
+const HOLD_DUR   = 260   // hold at center
+const FLY_OUT    = 580   // fly-out duration
+const GAP        = 80    // gap between icons
 
 // Each icon occupies: SCENE_DUR + HOLD_DUR + FLY_OUT = 1020ms
 // Next icon starts after: SCENE_DUR + HOLD_DUR + GAP = 660ms (overlaps fly-out)
@@ -24,8 +24,8 @@ const ICONS = [
 // Brand reveal starts right after last icon exits
 const BRAND_START_MS = ICON_CYCLE * (ICONS.length - 1) + SCENE_DUR + HOLD_DUR + FLY_OUT  // 3660ms
 const BRAND_DUR_MS   = 800
-const TOTAL_MS       = 3500   // hard cap — onComplete fires here
-const SAFETY_MS      = 4000   // fallback
+const TOTAL_MS       = 5000   // hard cap — onComplete fires here
+const SAFETY_MS      = 5500   // fallback
 
 const GOLD = '#C9A84C'
 
