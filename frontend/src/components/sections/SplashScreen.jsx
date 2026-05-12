@@ -1,185 +1,223 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Sofa, Bed, Bath, Lamp, Leaf, Blinds, Armchair, LayoutGrid, Home
+} from 'lucide-react'
 
-// 5 interior SVG icons
-const icons = [
-  {
-    label: 'Home',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
-        <path d="M9 21V12h6v9" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Sofa',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <path d="M2 12c0-1.5 1-2.5 2.5-2.5S7 10.5 7 12v2H2v-2z" />
-        <path d="M17 12c0-1.5 1-2.5 2.5-2.5S22 10.5 22 12v2h-5v-2z" />
-        <path d="M7 13h10M7 9.5V7a2 2 0 012-2h6a2 2 0 012 2v2.5" />
-        <path d="M5 17v1m14-1v1" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Blinds',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <rect x="3" y="3" width="18" height="18" rx="1" />
-        <line x1="3" y1="7" x2="21" y2="7" />
-        <line x1="3" y1="11" x2="21" y2="11" />
-        <line x1="3" y1="15" x2="21" y2="15" />
-        <line x1="3" y1="19" x2="21" y2="19" />
-        <line x1="14" y1="3" x2="14" y2="21" strokeDasharray="2 2" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Lamp',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <path d="M9 2h6l2 8H7L9 2z" />
-        <line x1="12" y1="10" x2="12" y2="20" />
-        <line x1="8" y1="20" x2="16" y2="20" />
-        <path d="M7 10h10" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Curtain',
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-        <line x1="3" y1="3" x2="21" y2="3" />
-        <path d="M5 3c0 5 4 7 4 10s-2 5-2 8" />
-        <path d="M19 3c0 5-4 7-4 10s2 5 2 8" />
-        <line x1="3" y1="21" x2="21" y2="21" />
-      </svg>
-    ),
-  },
+const ICONS = [
+  { Icon: Sofa,       label: 'Living Room', from: { x: -300, y: 0 },    to: { x: 300, y: 0 } },
+  { Icon: Bed,        label: 'Bedroom',     from: { x: 0, y: -300 },    to: { x: 0, y: 300 } },
+  { Icon: Bath,       label: 'Bathroom',    from: { x: 300, y: 0 },     to: { x: -300, y: 0 } },
+  { Icon: Lamp,       label: 'Lighting',    from: { x: 0, y: 300 },     to: { x: 0, y: -300 } },
+  { Icon: Leaf,       label: 'Decor',       from: { x: -250, y: -250 }, to: { x: 250, y: 250 } },
+  { Icon: Blinds,     label: 'Blinds',      from: { x: 250, y: -250 },  to: { x: -250, y: 250 } },
+  { Icon: Armchair,   label: 'Furniture',   from: { x: -250, y: 250 },  to: { x: 250, y: -250 } },
+  { Icon: LayoutGrid, label: 'Walls',       from: { x: 250, y: 250 },   to: { x: -250, y: -250 } },
+]
+
+// Each icon: 280ms in + 90ms hold + 280ms out = 650ms total
+// But next starts right after previous exits → stagger by 650ms
+const ICON_IN   = 0.28
+const ICON_HOLD = 0.09
+const ICON_OUT  = 0.28
+const ICON_TOTAL = ICON_IN + ICON_HOLD + ICON_OUT  // 0.65s per icon
+
+// All 8 icons finish at: 8 * 0.65 = 5.2s — too long, overlap them
+// Start next icon when previous starts exiting: stagger = ICON_IN + ICON_HOLD = 0.37s
+const STAGGER = ICON_IN + ICON_HOLD  // 0.37s
+
+// Last icon starts at: 7 * 0.37 = 2.59s, finishes at 2.59 + 0.65 = 3.24s
+// Brand reveal starts at ~3.3s
+const BRAND_START = STAGGER * 7 + ICON_TOTAL + 0.1  // ~3.35s
+const TOTAL_DURATION = BRAND_START + 1.2  // ~4.55s → call onComplete
+
+const GOLD = '#C9A84C'
+
+const corners = [
+  { top: 16, left: 16,  borderTop: true,  borderLeft: true  },
+  { top: 16, right: 16, borderTop: true,  borderRight: true },
+  { bottom: 16, left: 16,  borderBottom: true, borderLeft: true  },
+  { bottom: 16, right: 16, borderBottom: true, borderRight: true },
 ]
 
 export default function SplashScreen({ onComplete }) {
-  const [phase, setPhase] = useState(0) // 0=icons, 1=logo, 2=done
-  const called = useRef(false)
+  const [activeIcon, setActiveIcon] = useState(-1)   // index of currently shown icon
+  const [showBrand, setShowBrand] = useState(false)
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 1800)
-    const t2 = setTimeout(() => setPhase(2), 3200)
-    const t3 = setTimeout(() => {
-      if (!called.current) { called.current = true; onComplete() }
-    }, 3800)
-    return () => [t1, t2, t3].forEach(clearTimeout)
-  }, [])
+    // Sequence each icon
+    ICONS.forEach((_, i) => {
+      setTimeout(() => setActiveIcon(i), i * STAGGER * 1000)
+    })
+
+    // Hide last icon and show brand
+    setTimeout(() => {
+      setActiveIcon(-1)
+      setShowBrand(true)
+    }, BRAND_START * 1000)
+
+    // Call onComplete
+    setTimeout(() => onComplete(), TOTAL_DURATION * 1000)
+  }, [onComplete])
 
   return (
-    <AnimatePresence>
-      {phase < 2 && (
-        <motion.div
-          key="splash"
-          exit={{ opacity: 0, scale: 1.05, filter: 'blur(12px)' }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed inset-0 z-[200] bg-[#0A0A0A] flex flex-col items-center justify-center overflow-hidden"
-        >
-          {/* Gold glow */}
-          <motion.div
-            className="absolute w-[500px] h-[500px] rounded-full bg-[#C9A84C] blur-[150px]"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 0.1, scale: 1.2 }}
-            transition={{ duration: 2.5, ease: 'easeOut' }}
-          />
+    <motion.div
+      exit={{ opacity: 0, scale: 1.04, filter: 'blur(12px)' }}
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: '#0a0a0a',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Corner brackets */}
+      {corners.map((c, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            width: 18, height: 18,
+            top: c.top, bottom: c.bottom,
+            left: c.left, right: c.right,
+            borderTop:    c.borderTop    ? `1px solid rgba(201,168,76,0.3)` : 'none',
+            borderBottom: c.borderBottom ? `1px solid rgba(201,168,76,0.3)` : 'none',
+            borderLeft:   c.borderLeft   ? `1px solid rgba(201,168,76,0.3)` : 'none',
+            borderRight:  c.borderRight  ? `1px solid rgba(201,168,76,0.3)` : 'none',
+          }}
+        />
+      ))}
 
-          {/* Rotating rings */}
-          <motion.div className="absolute w-80 h-80 rounded-full border border-[#C9A84C15]"
-            animate={{ rotate: 360 }} transition={{ duration: 25, repeat: Infinity, ease: 'linear' }} />
-          <motion.div className="absolute w-56 h-56 rounded-full border border-[#C9A84C10]"
-            animate={{ rotate: -360 }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }} />
-
-          {/* Corner brackets */}
-          {['top-10 left-10 border-t border-l', 'top-10 right-10 border-t border-r',
-            'bottom-10 left-10 border-b border-l', 'bottom-10 right-10 border-b border-r'].map((cls, i) => (
-            <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 + i * 0.08 }}
-              className={`absolute w-7 h-7 border-[#C9A84C22] ${cls}`} />
-          ))}
-
-          {/* Phase 0 — Icons */}
-          <AnimatePresence mode="wait">
-            {phase === 0 && (
-              <motion.div
-                key="icons"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, y: -20, filter: 'blur(8px)' }}
-                transition={{ duration: 0.5 }}
-                className="relative z-10 flex flex-col items-center gap-8"
-              >
-                {/* Icons row */}
-                <div className="flex items-end gap-6">
-                  {icons.map((icon, i) => (
-                    <motion.div
-                      key={icon.label}
-                      initial={{ opacity: 0, y: 30, scale: 0.7 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ delay: i * 0.12, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex flex-col items-center gap-2"
-                    >
-                      <motion.div
-                        animate={{ y: [0, -5, 0] }}
-                        transition={{ delay: i * 0.12 + 0.6, duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                        className="w-14 h-14 border border-[#C9A84C33] flex items-center justify-center text-[#C9A84C] bg-[#C9A84C08]"
-                      >
-                        {icon.svg}
-                      </motion.div>
-                      <span className="text-[9px] tracking-[0.3em] text-white/20 uppercase">{icon.label}</span>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Animated line under icons */}
-                <motion.div
-                  className="h-px bg-gradient-to-r from-transparent via-[#C9A84C44] to-transparent"
-                  initial={{ width: 0 }}
-                  animate={{ width: 280 }}
-                  transition={{ delay: 0.8, duration: 0.8 }}
-                />
-              </motion.div>
-            )}
-
-            {/* Phase 1 — Logo */}
-            {phase === 1 && (
-              <motion.div
-                key="logo"
-                initial={{ opacity: 0, scale: 0.9, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="relative z-10 flex flex-col items-center gap-4"
-              >
-                <span className="font-['Cormorant_Garamond'] text-5xl md:text-7xl font-600 gold-text tracking-widest">
-                  GAURI
-                </span>
-                <div className="flex items-center gap-3">
-                  <div className="h-px w-8 bg-[#C9A84C44]" />
-                  <span className="text-[10px] tracking-[0.45em] text-white/35 uppercase">Interiors</span>
-                  <div className="h-px w-8 bg-[#C9A84C44]" />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Loading bar */}
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-44 h-px bg-white/5">
+      {/* Icon stage */}
+      <AnimatePresence mode="wait">
+        {activeIcon >= 0 && !showBrand && (() => {
+          const { Icon, label, from, to } = ICONS[activeIcon]
+          return (
             <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: 3.4, ease: 'easeInOut' }}
-              className="h-full origin-left bg-gradient-to-r from-[#C9A84C] to-[#E8C97A]"
+              key={activeIcon}
+              initial={{ x: from.x, y: from.y, scale: 0.6, opacity: 0 }}
+              animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+              exit={{ x: to.x, y: to.y, scale: 0.65, opacity: 0 }}
+              transition={{
+                enter: { duration: ICON_IN, ease: [0.22, 1, 0.36, 1] },
+                exit:  { duration: ICON_OUT, ease: [0.55, 0, 1, 0.45] },
+                default: { duration: ICON_IN, ease: [0.22, 1, 0.36, 1] },
+              }}
+              style={{
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: 14,
+                position: 'absolute',
+              }}
+            >
+              <Icon size={72} color={GOLD} strokeWidth={1.2} />
+              <span style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 12,
+                letterSpacing: '5px',
+                textTransform: 'uppercase',
+                color: 'rgba(201,168,76,0.65)',
+              }}>
+                {label}
+              </span>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
+
+      {/* Brand reveal */}
+      <AnimatePresence>
+        {showBrand && (
+          <motion.div
+            key="brand"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            style={{
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: 16,
+              position: 'absolute',
+            }}
+          >
+            {/* Outer ring */}
+            <motion.div
+              initial={{ scale: 0.75, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                width: 130, height: 130,
+                borderRadius: '50%',
+                border: '0.5px solid rgba(201,168,76,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {/* Inner ring */}
+              <div style={{
+                width: 110, height: 110,
+                borderRadius: '50%',
+                border: '1px solid rgba(201,168,76,0.6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Home size={44} color={GOLD} strokeWidth={1.2} />
+              </div>
+            </motion.div>
+
+            {/* Brand name */}
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.15, ease: 'easeOut' }}
+              style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 24,
+                letterSpacing: '8px',
+                textTransform: 'uppercase',
+                color: '#f0ead6',
+                margin: 0,
+              }}
+            >
+              Gauri Interiors
+            </motion.p>
+
+            {/* Gold divider */}
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: 60 }}
+              transition={{ duration: 0.45, delay: 0.25, ease: 'easeOut' }}
+              style={{ height: 1, background: 'rgba(201,168,76,0.5)' }}
             />
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+
+            {/* Tagline */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.35 }}
+              style={{
+                fontSize: 11,
+                letterSpacing: '5px',
+                textTransform: 'uppercase',
+                color: 'rgba(201,168,76,0.7)',
+                margin: 0,
+              }}
+            >
+              Premium Luxury Design
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Loading bar */}
+      <div style={{
+        position: 'absolute', bottom: 32,
+        left: '50%', transform: 'translateX(-50%)',
+        width: 200, height: 1,
+        background: 'rgba(201,168,76,0.15)',
+      }}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: '100%' }}
+          transition={{ duration: TOTAL_DURATION, ease: 'linear' }}
+          style={{ height: '100%', background: GOLD }}
+        />
+      </div>
+    </motion.div>
   )
 }
